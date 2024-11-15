@@ -1,0 +1,7 @@
+# PostgreSQL
+# ------------------------------------------------------------------------------
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=bank_loans
+POSTGRES_USER=vCXlFcsLISXHpkrdZtgjAeruggFVQDVU
+POSTGRES_PASSWORD=WgnmElYX2izYzLctHm7ABN0c9IPWUn3bQWiB9fW68V62k0eLbAk3hZwnjejqW9wD
