@@ -1,26 +1,37 @@
-from rest_framework import status
-from rest_framework.decorators import action
-from rest_framework.mixins import ListModelMixin
-from rest_framework.mixins import RetrieveModelMixin
-from rest_framework.mixins import UpdateModelMixin
+from rest_framework.authtoken.models import Token
+from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.generics import DestroyAPIView, RetrieveAPIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet
+from rest_framework import status
 
 from bank_loans.users.models import User
+from .serializers import UserDetailSerializer
 
-from .serializers import UserSerializer
 
-
-class UserViewSet(RetrieveModelMixin, ListModelMixin, UpdateModelMixin, GenericViewSet):
-    serializer_class = UserSerializer
+class UserRetrieveView(RetrieveAPIView):
+    serializer_class = UserDetailSerializer
     queryset = User.objects.all()
-    lookup_field = "username"
 
-    def get_queryset(self, *args, **kwargs):
-        assert isinstance(self.request.user.id, int)
-        return self.queryset.filter(id=self.request.user.id)
+    def get_object(self):
+        return self.request.user
 
-    @action(detail=False)
-    def me(self, request):
-        serializer = UserSerializer(request.user, context={"request": request})
-        return Response(status=status.HTTP_200_OK, data=serializer.data)
+
+class SignInView(ObtainAuthToken):
+    permission_classes = []
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data["user"]
+
+        token, created = Token.objects.get_or_create(user=user)
+        return Response({"token": token.key})
+
+
+class LogoutAPIView(DestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        request.auth.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

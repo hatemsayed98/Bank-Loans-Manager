@@ -3,6 +3,12 @@ from django.db.models import CharField
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
+ROLE_CHOICES = (
+    ("provider", "Loan Provider"),
+    ("customer", "Loan Customer"),
+    ("bank_personnel", "Bank Personnel"),
+)
+
 
 class User(AbstractUser):
     """
@@ -15,6 +21,7 @@ class User(AbstractUser):
     name = CharField(_("Name of User"), blank=True, max_length=255)
     first_name = None  # type: ignore[assignment]
     last_name = None  # type: ignore[assignment]
+    role = CharField(max_length=15, choices=ROLE_CHOICES)
 
     def get_absolute_url(self) -> str:
         """Get URL for user's detail view.

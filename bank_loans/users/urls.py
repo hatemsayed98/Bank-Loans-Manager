@@ -1,12 +1,12 @@
 from django.urls import path
 
-from .views import user_detail_view
-from .views import user_redirect_view
-from .views import user_update_view
+from .api.views import LogoutAPIView
+from .api.views import SignInView
+from .api.views import UserRetrieveView
 
 app_name = "users"
 urlpatterns = [
-    path("~redirect/", view=user_redirect_view, name="redirect"),
-    path("~update/", view=user_update_view, name="update"),
-    path("<str:username>/", view=user_detail_view, name="detail"),
+    path("login/", SignInView.as_view(), name="token-obtain-pair"),
+    path("profile/", UserRetrieveView.as_view(), name="user_retrieve"),
+    path("logout/", LogoutAPIView.as_view(), name="logout"),
 ]
