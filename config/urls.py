@@ -12,6 +12,7 @@ urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),
     # User management
     path("users/", include("bank_loans.users.urls", namespace="users")),
+    path("loans/", include("bank_loans.loans.urls", namespace="loans")),
     *static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT),
 ]
 
