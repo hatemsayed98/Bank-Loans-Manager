@@ -31,6 +31,12 @@ repos:
     hooks:
       - id: djlint-reformat-django
       - id: djlint-django
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.1.0  # Use the latest stable version
+    hooks:
+      - id: flake8
+        args:
+          - --select=F401
 
 # sets up .pre-commit-ci.yaml to ensure pre-commit dependencies stay up to date
 ci:

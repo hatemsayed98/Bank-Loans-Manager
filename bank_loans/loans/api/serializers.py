@@ -1,5 +1,3 @@
-from decimal import Decimal
-from decimal import ROUND_HALF_UP
 from rest_framework.serializers import ModelSerializer
 from bank_loans.loans.models import (
     BankBudget,

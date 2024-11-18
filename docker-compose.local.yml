@@ -1,7 +1,7 @@
 volumes:
   bank_loans_local_postgres_data: {}
   bank_loans_local_postgres_data_backups: {}
-  
+
 
 services:
   django:
