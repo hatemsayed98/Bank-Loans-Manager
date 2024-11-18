@@ -1,10 +1,14 @@
 from datetime import datetime
 from decimal import Decimal
+import logging
 
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db import transaction
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -21,9 +25,16 @@ class BankBudget(models.Model):
             raise ValidationError("There can only be one BankBudget instance.")
         super().save(*args, **kwargs)
 
+    def add_funds(self, amount):
+        self.total_funds += Decimal(amount)
+        self.save()
+
     @classmethod
-    def get_instance(cls):
-        instance, created = cls.objects.get_or_create(id=1)
+    def get_instance(cls, for_update=False):
+        if for_update:
+            instance = cls.objects.select_for_update().get(pk=1)
+        else:
+            instance, created = cls.objects.get_or_create(pk=1)
         return instance
 
     class Meta:
@@ -60,15 +71,27 @@ class Document(models.Model):
 
 
 class LoanRequest(models.Model):
+    STATUS_PENDING_REVIEW = "pending_review"
+    STATUS_PENDING_CUSTOMER = "pending_customer"
+    STATUS_PENDING_APPROVAL = "pending_approval"
+    STATUS_APPROVED = "approved"
+    STATUS_REJECTED = "rejected"
+
     STATUS_CHOICES = [
-        ("pending", "Pending Review"),
-        ("pending_customer", "Awaiting Customer Input"),
-        ("pending_approval", "Awaiting Approval"),
-        ("approved", "Approved"),
-        ("rejected", "Rejected"),
+        (STATUS_PENDING_REVIEW, "Pending Review"),
+        (STATUS_PENDING_APPROVAL, "Pending Approval"),
+        (STATUS_APPROVED, "Approved"),
+        (STATUS_REJECTED, "Rejected"),
+        (STATUS_PENDING_CUSTOMER, "Pending Customer Input"),
     ]
+
+    status = models.CharField(
+        max_length=50,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING_REVIEW,
+    )
+
     customer = models.ForeignKey(User, on_delete=models.CASCADE)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     min_amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -111,23 +134,49 @@ class LoanRequest(models.Model):
         if self.max_duration_months <= 0:
             raise ValidationError("Maximum duration must be greater than zero.")
 
-    def approve(self):
-        self.status = "approved"
-        self.save()
-        Loan.objects.create(
-            customer=self.customer,
-            amount=self.amount,
-            term_months=self.final_duration_months,
-            interest_rate=self.interest_rate,
-            status="in_progress",
-        )
+    def approve(self, approved_by):
+        with transaction.atomic():
+            bank_budget = BankBudget.objects.select_for_update().get(pk=1)
+
+            loan_amount = Decimal(self.amount)
+            total_funds = Decimal(bank_budget.total_funds)
+
+            if total_funds < loan_amount:
+                raise ValueError("Insufficient funds in bank budget.")
+
+            bank_budget.total_funds -= loan_amount
+            bank_budget.save()
+
+            self.status = self.STATUS_APPROVED
+            self.save()
+
+            loan = Loan.objects.create(
+                customer=self.customer,
+                amount=loan_amount,
+                term_months=self.final_duration_months,
+                interest_rate=self.interest_rate,
+                status=Loan.STATUS_IN_PROGRESS,
+            )
+
+            self.documents.update(loan=loan)
+
+            logger.info(
+                f"Loan request {self.id} approved by {approved_by.username}. "
+                f"Loan amount: {loan_amount}. Bank total funds updated to {bank_budget.total_funds}."
+            )
+
+            return loan
 
 
 class Loan(models.Model):
+    STATUS_IN_PROGRESS = "in_progress"
+    STATUS_FULLY_PAID = "fully_paid"
+    STATUS_OVERDUE = "overdue"
+
     STATUS_CHOICES = [
-        ("in_progress", "In Progress"),
-        ("fully_paid", "Fully Paid"),
-        ("overdue", "Overdue"),
+        (STATUS_IN_PROGRESS, "In Progress"),
+        (STATUS_FULLY_PAID, "Fully Paid"),
+        (STATUS_OVERDUE, "Overdue"),
     ]
 
     customer = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -137,7 +186,7 @@ class Loan(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default="in_progress",
+        default=STATUS_IN_PROGRESS,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -162,9 +211,11 @@ class Loan(models.Model):
 
     def update_status(self):
         if self.is_fully_paid():
-            self.status = "fully_paid"
+            self.status = self.STATUS_FULLY_PAID
         elif self.has_deadline_passed():
-            self.status = "overdue"
+            self.status = self.STATUS_OVERDUE
+        else:
+            self.status = self.STATUS_IN_PROGRESS
         self.save()
 
 

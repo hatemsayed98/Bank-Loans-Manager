@@ -1,3 +1,5 @@
+import logging
+from django.db import transaction
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,6 +19,9 @@ from .serializers import (
     LoanSerializer,
     LoanPaymentSerializer,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 # Funds
@@ -62,7 +67,9 @@ class SetLoanRequestSettingsView(APIView):
 
     def post(self, request, pk):
         try:
-            loan_request = LoanRequest.objects.get(pk=pk, status="pending")
+            loan_request = LoanRequest.objects.get(
+                pk=pk, status=LoanRequest.STATUS_PENDING_REVIEW
+            )
         except LoanRequest.DoesNotExist:
             return Response(
                 {"detail": "Loan request not found or not pending."},
@@ -84,55 +91,61 @@ class SetLoanRequestSettingsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        serializer.save(status="pending_customer")
+        serializer.save(status=LoanRequest.STATUS_PENDING_CUSTOMER)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-# Personnel endpoint to accept a loan request
 class AcceptLoanRequestView(APIView):
     permission_classes = [IsAuthenticated, IsBankPersonnel]
 
     def post(self, request, pk):
         try:
-            loan_request = LoanRequest.objects.get(pk=pk, status="pending_approval")
+            loan_request = LoanRequest.objects.get(
+                pk=pk, status=LoanRequest.STATUS_PENDING_APPROVAL
+            )
         except LoanRequest.DoesNotExist:
             return Response(
-                {"detail": "Loan request not found or not awaiting customer input."},
+                {"detail": "Loan request not found or not pending approval."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        loan_request.status = "approved"
-        loan_request.save()
-
-        # Create the loan for the customer
-        Loan.objects.create(
-            customer=loan_request.customer,
-            amount=loan_request.amount,
-            term_months=loan_request.final_duration_months,
-            interest_rate=loan_request.interest_rate,
-            status="in_progress",
-        )
+        try:
+            loan_request.approve(request.user)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(
-            {"detail": "Loan request approved and loan created."},
+            {
+                "detail": "Loan request approved, loan created, and documents transferred."
+            },
             status=status.HTTP_200_OK,
         )
 
 
-# Personnel endpoint to reject a loan request
 class RejectLoanRequestView(APIView):
     permission_classes = [IsAuthenticated, IsBankPersonnel]
 
     def post(self, request, pk):
-        try:
-            loan_request = LoanRequest.objects.get(pk=pk)
-        except LoanRequest.DoesNotExist:
-            return Response(
-                {"detail": "Loan request not found."}, status=status.HTTP_404_NOT_FOUND
-            )
+        with transaction.atomic():
+            try:
+                loan_request = LoanRequest.objects.select_for_update().get(pk=pk)
+            except LoanRequest.DoesNotExist:
+                return Response(
+                    {"detail": "Loan request not found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
 
-        loan_request.status = "rejected"
-        loan_request.save()
+            if loan_request.status in [
+                LoanRequest.STATUS_APPROVED,
+                LoanRequest.STATUS_REJECTED,
+            ]:
+                return Response(
+                    {"detail": f"Loan request has already been {loan_request.status}."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            loan_request.status = LoanRequest.STATUS_REJECTED
+            loan_request.save()
 
         return Response({"detail": "Loan request rejected."}, status=status.HTTP_200_OK)
 
@@ -209,7 +222,7 @@ class CustomerSetLoanRequestSettingsView(APIView):
     def post(self, request, pk):
         try:
             loan_request = LoanRequest.objects.get(
-                pk=pk, customer=request.user, status="pending_customer"
+                pk=pk, customer=request.user, status=LoanRequest.STATUS_PENDING_CUSTOMER
             )
         except LoanRequest.DoesNotExist:
             return Response(
@@ -218,11 +231,10 @@ class CustomerSetLoanRequestSettingsView(APIView):
             )
 
         serializer = CustomerLoanRequestSettingsSerializer(
-            loan_request, data=request.data, partial=True  # Allow partial updates
+            loan_request, data=request.data, partial=True
         )
         serializer.is_valid(raise_exception=True)
 
-        # Validate the amount between min and max specified by personnel
         amount = serializer.validated_data.get("amount")
         if amount < loan_request.min_amount or amount > loan_request.max_amount:
             return Response(
@@ -232,7 +244,6 @@ class CustomerSetLoanRequestSettingsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Check available funds
         bank_budget = BankBudget.objects.first()
         if bank_budget and amount > bank_budget.available_funds():
             return Response(
@@ -240,10 +251,9 @@ class CustomerSetLoanRequestSettingsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        serializer.save()  # Save only the fields provided
-        loan_request.status = "pending_personnel"
-        loan_request.save()  # Update status separately
-
+        serializer.save()
+        loan_request.status = LoanRequest.STATUS_PENDING_APPROVAL
+        loan_request.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
