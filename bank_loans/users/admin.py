@@ -9,11 +9,16 @@ from .models import User
 
 @admin.register(User)
 class UserAdmin(auth_admin.UserAdmin):
+    view_on_site = False
     form = UserAdminChangeForm
     add_form = UserAdminCreationForm
     fieldsets = (
         (None, {"fields": ("username", "password")}),
-        (_("Personal info"), {"fields": ("name", "email")}),
+        (
+            _("Personal info"),
+            {"fields": ("name",)},
+        ),
+        (_("Verify Email"), {"fields": ("email_verified",)}),
         (
             _("Permissions"),
             {
@@ -29,5 +34,15 @@ class UserAdmin(auth_admin.UserAdmin):
         ),
         (_("Important dates"), {"fields": ("last_login", "date_joined")}),
     )
-    list_display = ["username", "name", "is_superuser", "role"]
+    list_display = ["username", "email", "name", "is_superuser", "email_verified", "role"]
     search_fields = ["name"]
+    ordering = ["id"]
+    add_fieldsets = (
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": ("email", "password1", "password2"),
+            },
+        ),
+    )

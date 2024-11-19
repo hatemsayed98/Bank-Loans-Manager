@@ -219,6 +219,13 @@ EMAIL_BACKEND = env(
 )
 # https://docs.djangoproject.com/en/dev/ref/settings/#email-timeout
 EMAIL_TIMEOUT = 5
+EMAIL_HOST = env("DJANGO_EMAIL_HOST", default=None)
+EMAIL_PORT = env("DJANGO_EMAIL_PORT", default=None)
+EMAIL_HOST_USER = env("DJANGO_EMAIL_HOST_USER", default=None)
+EMAIL_HOST_PASSWORD = env("DJANGO_EMAIL_HOST_PASSWORD", default=None)
+EMAIL_USE_SSL = env.bool("DJANGO_EMAIL_USE_SSL", default=False)
+EMAIL_USE_TLS = env.bool("DJANGO_EMAIL_USE_TLS", default=True)
+DEFAULT_FROM_EMAIL = env.str("DJANGO_DEFAULT_FROM_EMAIL", default="webmaster@localhost")
 
 # ADMIN
 # ------------------------------------------------------------------------------
@@ -278,3 +285,4 @@ SPECTACULAR_SETTINGS = {
 }
 # Your stuff...
 # ------------------------------------------------------------------------------
+OTP_EXPIRATION_TIME = env("DJANGO_OTP_EXPIRATION_TIME", default=300)

@@ -1,4 +1,7 @@
 from rest_framework.permissions import BasePermission
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 class IsProvider(BasePermission):
@@ -7,7 +10,7 @@ class IsProvider(BasePermission):
     """
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == "provider"
+        return request.user.is_authenticated and request.user.role == User.ROLE_PROVIDER
 
 
 class IsCustomer(BasePermission):
@@ -16,7 +19,7 @@ class IsCustomer(BasePermission):
     """
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == "customer"
+        return request.user.is_authenticated and request.user.role == User.ROLE_CUSTOMER
 
 
 class IsBankPersonnel(BasePermission):
@@ -25,4 +28,7 @@ class IsBankPersonnel(BasePermission):
     """
 
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == "bank_personnel"
+        return (
+            request.user.is_authenticated
+            and request.user.role == User.ROLE_BANK_PERSONNEL
+        )

@@ -1,0 +1,12 @@
+{% extends "emails/base_email.html" %}
+
+{% block header_title %}
+  {{ header_title }}
+{% endblock header_title %}
+{% block content %}
+  <p>{{ message|safe }}</p>
+  <div class="message-box">
+    <p class="code">{{ code }}</p>
+  </div>
+  {% if footer_text %}<p class="footer-text">{{ footer_text }}</p>{% endif %}
+{% endblock content %}

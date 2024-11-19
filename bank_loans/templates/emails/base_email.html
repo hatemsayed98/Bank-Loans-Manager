@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      {% block title %}
+        Email
+      {% endblock title %}
+    </title>
+    <style>
+      body {
+        font-family: "Open Sans", sans-serif;
+        margin: 0;
+        padding: 0;
+        color: #333333;
+        background-color: #f4f4f4;
+        text-align: center;
+      }
+
+      .email-container {
+        max-width: 600px;
+        margin: 40px auto;
+        background: #ffffff;
+        padding: 30px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        text-align: left;
+        /* Ensure left text alignment in content */
+      }
+
+      .header {
+        padding: 20px;
+        text-align: center;
+        font-family: "Merriweather", serif;
+        font-size: 24px;
+        font-weight: 700;
+        background-color: #1a91ff;
+        color: white;
+        border-radius: 8px 8px 0 0;
+      }
+
+      .content {
+        padding: 20px;
+        border: 1px solid #cccccc;
+        border-radius: 0 0 8px 8px;
+      }
+
+      h2 {
+        font-family: "Merriweather", serif;
+        color: #0056b3;
+        margin-bottom: 0.5em;
+        font-size: 22px;
+      }
+
+      p {
+        margin-top: 0;
+        line-height: 1.8;
+        font-size: 18px;
+        font-family: "Open Sans", sans-serif;
+        color: #2a2a2a;
+      }
+
+      a.confirm-button {
+        display: inline-block;
+        text-decoration: none;
+        color: white;
+        background-color: #1a91ff;
+        padding: 12px 25px;
+        border-radius: 5px;
+        font-weight: bold;
+        margin-top: 20px;
+        transition: background-color 0.3s ease;
+        font-size: 18px;
+      }
+
+      .subject {
+        font-size: 18px;
+        font-weight: bold;
+        color: #0056b3;
+        margin-bottom: 10px;
+        text-align: center;
+      }
+
+      .code {
+        font-size: 20px;
+        font-weight: bold;
+      }
+
+      .message-box {
+        background-color: #f9f9f9;
+        padding: 20px;
+        margin: 20px 0;
+        font-family: "Open Sans", sans-serif;
+        font-size: 32px;
+        font-weight: bold;
+        color: #333333;
+        text-align: center;
+        border-radius: 8px;
+        border: 1px solid #cccccc;
+        letter-spacing: 4px;
+        /* Increase spacing between characters */
+      }
+
+      a.confirm-button:hover {
+        background-color: #137cbd;
+      }
+
+      .intro-text {
+        font-size: 18px;
+        font-family: "Open Sans", sans-serif;
+        margin-bottom: 20px;
+      }
+
+      .footer-text {
+        font-size: 14px;
+        color: #777;
+        margin-top: 20px;
+      }
+
+      /* Responsive Design */
+      @media only screen and (max-width: 600px) {
+        .email-container {
+          padding: 20px;
+        }
+
+        .header {
+          font-size: 20px;
+        }
+
+        p,
+        .intro-text {
+          font-size: 16px;
+        }
+
+        .message-box {
+          font-size: 24px;
+        }
+
+        .confirm-button {
+          padding: 10px 20px;
+          font-size: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <div class="header">
+        <h1>
+          {% block header_title %}
+          {% endblock header_title %}
+        </h1>
+      </div>
+      <div class="content">
+        {% block content %}
+        {% endblock content %}
+      </div>
+    </div>
+  </body>
+</html>
