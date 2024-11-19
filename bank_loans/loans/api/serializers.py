@@ -21,15 +21,26 @@ class FundSerializer(ModelSerializer):
         fields = ["id", "user", "amount", "created_at"]
         read_only_fields = ["id", "created_at", "user"]
 
+    @transaction.atomic
     def create(self, validated_data):
         user = self.context["request"].user
         fund = Fund.objects.create(user=user, **validated_data)
+
+        success = self.send_funds_to_bank(fund.amount, user)
+        if not success:
+            raise Exception("Failed to send funds to the bank.")
 
         bank_budget, _ = BankBudget.objects.get_or_create(id=1)
         bank_budget.add_funds(fund.amount)
         bank_budget.save()
 
         return fund
+
+    def send_funds_to_bank(self, fund_amount, user):
+        print(
+            f"Simulating sending {fund_amount} funds from provider {user.username} to the bank."
+        )
+        return True
 
 
 class DocumentSerializer(serializers.ModelSerializer):
@@ -201,11 +212,17 @@ class LoanPaymentSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         with transaction.atomic():
             loan = self.context["loan"]
+
+            success = self.simulate_fund_transfer(validated_data["amount_paid"], loan)
+            if not success:
+                raise serializers.ValidationError("Fund transfer failed.")
+
             payment = super().create(validated_data)
             loan.update_status()
 
             bank_budget = BankBudget.get_instance(for_update=True)
             bank_budget.add_funds(payment.amount_paid)
+            bank_budget.save()
 
             logger.info(
                 f"User {self.context['request'].user} made a payment of {payment.amount_paid} "
@@ -213,3 +230,11 @@ class LoanPaymentSerializer(serializers.ModelSerializer):
             )
 
         return payment
+
+    def simulate_fund_transfer(self, amount, loan):
+        """
+        Simulate the process of transferring funds. This function can be replaced with
+        actual integration to an external payment service.
+        """
+        print(f"Simulating transfer of {amount} for loan ID {loan.id}.")
+        return True
