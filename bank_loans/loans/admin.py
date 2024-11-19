@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.sites.models import Site
 
 from .models import BankBudget
 from .models import Document
@@ -21,7 +22,7 @@ class LoanAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "created_at", "updated_at")
     search_fields = ("customer__username", "customer__email")
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = ("customer", "created_at", "updated_at")
     fieldsets = (
         (
             "Information",
@@ -49,19 +50,27 @@ class LoanPaymentAdmin(admin.ModelAdmin):
     list_display = ("loan", "amount_paid", "payment_date")
     list_filter = ("payment_date",)
     search_fields = ("loan__customer__username", "loan__customer__email")
-    readonly_fields = ("payment_date",)
+    readonly_fields = (
+        "loan",
+        "amount_paid",
+        "payment_date",
+    )
 
 
 @admin.register(BankBudget)
 class BankBudgetAdmin(admin.ModelAdmin):
-    list_display = ("total_funds", "budget")
+    list_display = ("total_funds",)
 
 
 @admin.register(Fund)
 class FundAdmin(admin.ModelAdmin):
     list_display = ("user", "amount", "created_at")
     search_fields = ("user__username", "user__email")
-    readonly_fields = ("created_at",)
+    readonly_fields = (
+        "user",
+        "amount",
+        "created_at",
+    )
 
 
 @admin.register(Document)
@@ -87,4 +96,8 @@ class LoanRequestAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "created_at", "updated_at")
     search_fields = ("customer__username", "customer__email")
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = ("customer", "created_at", "updated_at")
+
+
+
+admin.site.unregister(Site)

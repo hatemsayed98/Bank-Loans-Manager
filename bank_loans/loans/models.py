@@ -15,7 +15,6 @@ User = get_user_model()
 
 class BankBudget(models.Model):
     total_funds = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    budget = models.DecimalField(max_digits=15, decimal_places=2, default=0)
 
     def available_funds(self):
         return self.total_funds
